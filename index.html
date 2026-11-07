@@ -146,8 +146,11 @@
     function showCategories(categories) {
       const box = document.getElementById("categories");
 
-      box.innerHTML =
-        '<button class="category active" onclick="filterItems(\\'all\\',this)">All</button>';
+      box.innerHTML = '<button class="category active" id="allCategory">All</button>';
+
+document.getElementById("allCategory").onclick = function() {
+  filterItems("all", this);
+};
 
       categories.forEach(category => {
         const button = document.createElement("button");
