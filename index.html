@@ -1,0 +1,209 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Food | Restaurant</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f7f7f4;
+      color: #222;
+    }
+    header {
+      background: #171717;
+      color: white;
+      padding: 25px 18px;
+      text-align: center;
+    }
+    header h1 { margin: 0 0 7px; font-size: 30px; }
+    header p { margin: 0; color: #ccc; }
+    main { max-width: 850px; margin: auto; padding: 20px 15px; }
+    h2 { margin-bottom: 15px; }
+    #categories {
+      display: flex;
+      gap: 9px;
+      overflow-x: auto;
+      padding-bottom: 15px;
+    }
+    .category {
+      border: 1px solid #ddd;
+      background: white;
+      padding: 10px 16px;
+      border-radius: 22px;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .category.active {
+      background: #171717;
+      color: white;
+    }
+    #menu {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 13px;
+    }
+    .food {
+      background: white;
+      border-radius: 14px;
+      padding: 15px;
+      box-shadow: 0 2px 10px #0000000b;
+    }
+    .food h3 { margin: 0 0 8px; }
+    .food p { color: #777; font-size: 13px; }
+    .price { font-weight: bold; font-size: 18px; }
+    #message {
+      text-align: center;
+      padding: 35px 10px;
+      color: #666;
+    }
+    footer {
+      text-align: center;
+      padding: 25px;
+      color: #888;
+      font-size: 12px;
+    }
+    @media(max-width: 420px) {
+      #menu { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>🍽️ New Food</h1>
+    <p>Fresh food, happy moments</p>
+  </header>
+
+  <main>
+    <h2>Our Menu</h2>
+    <div id="categories"></div>
+    <div id="menu">
+      <div id="message">Loading menu...</div>
+    </div>
+  </main>
+
+  <footer>Powered by New Food</footer>
+
+  <script>
+    const SUPABASE_URL = "https://fjgotlxcgocfcracxazl.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_HWBcQbyYWpZM2dxLoF0nig_wkg3DdNF";
+
+    const db = window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    );
+
+    let allItems = [];
+    let selectedCategory = "all";
+
+    async function loadMenu() {
+      const message = document.getElementById("menu");
+
+      try {
+        const { data: restaurant, error: restaurantError } =
+          await db.from("restaurants")
+            .select("id,name")
+            .eq("slug", "new-food")
+            .single();
+
+        if (restaurantError) throw restaurantError;
+
+        const { data: categories, error: categoryError } =
+          await db.from("categories")
+            .select("id,name")
+            .eq("restaurant_id", restaurant.id)
+            .eq("active", true)
+            .order("sort_order");
+
+        if (categoryError) throw categoryError;
+
+        const { data: items, error: itemError } =
+          await db.from("menu_items")
+            .select("id,name,description,price,category_id")
+            .eq("restaurant_id", restaurant.id)
+            .eq("available", true);
+
+        if (itemError) throw itemError;
+
+        allItems = items || [];
+        showCategories(categories || []);
+        showItems();
+
+      } catch (error) {
+        console.error(error);
+        message.innerHTML =
+          '<div id="message">Menu could not load yet. Add food items first, then refresh.</div>';
+      }
+    }
+
+    function showCategories(categories) {
+      const box = document.getElementById("categories");
+
+      box.innerHTML =
+        '<button class="category active" onclick="filterItems(\\'all\\',this)">All</button>';
+
+      categories.forEach(category => {
+        const button = document.createElement("button");
+        button.className = "category";
+        button.textContent = category.name;
+        button.onclick = () => filterItems(category.id, button);
+        box.appendChild(button);
+      });
+    }
+
+    function filterItems(id, button) {
+      selectedCategory = id;
+
+      document.querySelectorAll(".category").forEach(item =>
+        item.classList.remove("active")
+      );
+
+      button.classList.add("active");
+      showItems();
+    }
+
+    function showItems() {
+      const box = document.getElementById("menu");
+
+      const items = selectedCategory === "all"
+        ? allItems
+        : allItems.filter(item => item.category_id === selectedCategory);
+
+      box.innerHTML = "";
+
+      if (!items.length) {
+        box.innerHTML =
+          '<div id="message">No food items yet. Your menu will appear here.</div>';
+        return;
+      }
+
+      items.forEach(item => {
+        const card = document.createElement("div");
+        card.className = "food";
+
+        const name = document.createElement("h3");
+        name.textContent = item.name;
+
+        const description = document.createElement("p");
+        description.textContent = item.description || "Fresh and delicious";
+
+        const price = document.createElement("div");
+        price.className = "price";
+        price.textContent = "₹" + Number(item.price).toFixed(2);
+
+        card.append(name, description, price);
+        box.appendChild(card);
+      });
+    }
+
+    loadMenu();
+  </script>
+</body>
+</html>
